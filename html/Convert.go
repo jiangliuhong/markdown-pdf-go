@@ -19,17 +19,57 @@ import (
 	"text/template"
 )
 
-//Markdown 将markdown转为html
-func Markdown(context []byte) []byte {
+// Markdown 基本对象
+type Markdown struct {
+	// cssFile css文件地址
+	cssFile []string
+	// cssBlock css代码块
+	cssBlock string
+}
+
+//Html 将markdown转为html
+func (markdown *Markdown) Html(context []byte) []byte {
+	css := baseCssStyle
+	if len(markdown.cssBlock) != 0 {
+		css += markdown.cssBlock
+	}
+	if len(markdown.cssFile) != 0 {
+
+	}
 	r := &renderer{Html: blackfriday.HtmlRenderer(0, "", "").(*blackfriday.Html)}
 	unsafe := blackfriday.Markdown(context, r, extensions)
 	sanitized := policy.SanitizeBytes(unsafe)
-	return sanitized
+
+	htmlContent := `<html>
+<head>
+<meta charset="utf-8">
+	<link href="https://cdn.bootcdn.net/ajax/libs/github-markdown-css/5.1.0/github-markdown-light.css" media="all" rel="stylesheet" type="text/css" />
+	<style>
+` + css + `
+	</style>
+</head>
+<body>
+<article class="markdown-body entry-content" style="padding: 30px;">`
+	htmlContent += string(sanitized)
+	htmlContent += `</article>
+</body>
+</html>`
+	return []byte(htmlContent)
 }
 
 type renderer struct {
 	*blackfriday.Html
 }
+
+const baseCssStyle = `pre {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+}
+
+code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+}`
 
 const extensions = blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
 	blackfriday.EXTENSION_TABLES |
@@ -139,7 +179,7 @@ func (*renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	}
 }
 
-// Task List support.
+// ListItem Task List support.
 func (r *renderer) ListItem(out *bytes.Buffer, text []byte, flags int) {
 	switch {
 	case bytes.HasPrefix(text, []byte("[ ] ")):
