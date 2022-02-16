@@ -2,22 +2,19 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"markdown-pdf-go/html"
 )
 
 func main() {
 	source := "Test.md"
-	dest := "Test.html"
+	dest := "Test.pdf"
 	content, err := html.ReadFile(source)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	mdc := &html.Markdown{}
-	htmlContent := mdc.Html(content)
-	err = html.WriteFile(dest, htmlContent)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	pdf := mdc.Pdf(content)
+	ioutil.WriteFile(dest, pdf, 0644)
 }

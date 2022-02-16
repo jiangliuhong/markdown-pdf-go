@@ -2,7 +2,10 @@ package html
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/highlight_diff"
@@ -13,6 +16,9 @@ import (
 	"github.com/sourcegraph/syntaxhighlight"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"sort"
 	"strings"
@@ -22,22 +28,28 @@ import (
 // Markdown 基本对象
 type Markdown struct {
 	// cssFile css文件地址
-	cssFile []string
+	CssFile []string
 	// cssBlock css代码块
-	cssBlock string
+	CssBlock string
+	JsBlock  string
 }
 
 //Html 将markdown转为html
-func (markdown *Markdown) Html(context []byte) []byte {
+func (markdown *Markdown) Html(content []byte) []byte {
 	css := baseCssStyle
-	if len(markdown.cssBlock) != 0 {
-		css += markdown.cssBlock
+	js := ""
+	if len(markdown.CssBlock) != 0 {
+		css += markdown.CssBlock
 	}
-	if len(markdown.cssFile) != 0 {
+	if len(markdown.CssFile) != 0 {
 
 	}
+	if len(markdown.JsBlock) != 0 {
+		js += markdown.JsBlock
+	}
+
 	r := &renderer{Html: blackfriday.HtmlRenderer(0, "", "").(*blackfriday.Html)}
-	unsafe := blackfriday.Markdown(context, r, extensions)
+	unsafe := blackfriday.Markdown(content, r, extensions)
 	sanitized := policy.SanitizeBytes(unsafe)
 
 	htmlContent := `<html>
@@ -53,8 +65,37 @@ func (markdown *Markdown) Html(context []byte) []byte {
 	htmlContent += string(sanitized)
 	htmlContent += `</article>
 </body>
+<script>
+` + js + `
+</script>
 </html>`
 	return []byte(htmlContent)
+}
+
+// Pdf 转为pdf
+func (markdown *Markdown) Pdf(content []byte) []byte {
+	content = markdown.Html(content)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		io.WriteString(w, string(content))
+	}))
+	defer ts.Close()
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+	var pdfByte []byte
+	chromedp.Run(ctx,
+		chromedp.Navigate(ts.URL),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// to pdf
+			buf, _, err := page.PrintToPDF().WithPrintBackground(true).Do(ctx)
+			if err != nil {
+				return err
+			}
+			pdfByte = buf
+			return nil
+		}),
+	)
+	return pdfByte
 }
 
 type renderer struct {

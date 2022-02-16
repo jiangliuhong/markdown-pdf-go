@@ -36,6 +36,15 @@
 ```javascript
 // An highlighted block
 var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
+var foo = 'bar';
 ```
 
 ## 生成一个适合你的列表
