@@ -1,7 +1,7 @@
 package handle
 
 import (
-	"html/template"
+	"log"
 	"net/http"
 )
 
@@ -15,7 +15,7 @@ type TodoPageData struct {
 	Todos     []Todo
 }
 
-func Index(w http.ResponseWriter, r *http.Request) {
+func Demo(w http.ResponseWriter, r *http.Request) {
 	data := TodoPageData{
 		PageTitle: "My TODO list",
 		Todos: []Todo{
@@ -24,8 +24,10 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			{Title: "Task 3", Done: true},
 		},
 	}
+	tmpl := getTemplate("demo.html")
 
-	tmpl := template.Must(template.ParseFiles("view/index.html"))
-
-	tmpl.Execute(w, data)
+	err := tmpl.Execute(w, data)
+	if err != nil {
+		log.Println(err)
+	}
 }
